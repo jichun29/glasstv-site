@@ -25,6 +25,7 @@
       GlassTV
     </a>
     <div class="links">
+      <a href="#compare-sec">对比</a>
       <a href="#features">功能</a>
       <a href="#shots">截图</a>
       <a href="#install">安装</a>
@@ -44,10 +45,21 @@
       <a class="btn primary" href="#install">开始安装</a>
       <a class="btn ghost" href="https://github.com/jichun29/glasstv" target="_blank" rel="noopener">在 GitHub 查看</a>
     </div>
-    <figure class="hero-shot">
-      <img src="img/home.jpg" alt="GlassTV 桌面主页：森林壁纸、左上角时间天气、底部一排应用" width="1280" height="720">
-      <figcaption>首页 · 壁纸 / 时间天气 / 应用栏</figcaption>
-    </figure>
+    <section class="hero-compare" id="compare-sec">
+    <div class="tv hero-tv">
+      <div class="glow"></div>
+      <div class="screen compare" id="compare" role="slider" tabindex="0" aria-label="电视自带的桌面和 GlassTV 的对比，左右拖动查看" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <img class="glass" src="img/glass-home-1600.jpg" alt="GlassTV 首页：风景壁纸和玻璃底板上的一排应用" width="1600" height="900">
+        <div class="stock"><img src="img/stock-patchwall.jpg" alt="电视自带的桌面：满屏影视推荐、会员与限免角标" width="1600" height="900"></div>
+        <div class="divider" aria-hidden="true"><span class="knob"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l-6 6 6 6M15 6l6 6-6 6"/></svg></span></div>
+      </div>
+      <div class="stand"></div>
+      <div class="compare-legend">
+        <button type="button" class="replay"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 3v6h6"/></svg>再看一遍</button>
+        <span class="compare-hint">按住左右拖：左边是电视自带桌面，右边是 GlassTV</span>
+      </div>
+    </div>
+    </section>
   </div>
 </header>
 
@@ -221,6 +233,111 @@
     </div>
   </div>
 </footer>
+
+<script>
+/* 装前 / 装后 对比（2026-10-27，思路照 aerial-tv 官网）：
+   - 鼠标悬停即跟随，按下可拖动；触屏按住拖；键盘左右键各 10%。
+   - 滚动到画面时自动擦一遍，让人先看到「装后」，再点「再看一遍」重看。
+   - 分界线走到两端时淡出，免得半个圆钮挂在屏幕外。 */
+(function () {
+  var box = document.getElementById('compare');
+  if (!box) return;
+  var divider = box.querySelector('.divider');
+  var replay = document.querySelector('.replay');
+  var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var x = 0, target = 0, raf = 0, touched = false;
+
+  function set(v) {
+    x = v;
+    box.style.setProperty('--x', (x * 100).toFixed(2) + '%');
+    box.setAttribute('aria-valuenow', Math.round(x * 100));
+    divider.style.opacity = (x > 0.03 && x < 0.97) ? 1 : 0;
+    box.classList.toggle('done', x >= 0.999);
+  }
+  function tick() {
+    var d = target - x;
+    if (Math.abs(d) < 0.0005) { set(target); raf = 0; return; }
+    set(x + d * 0.14);
+    raf = requestAnimationFrame(tick);
+  }
+  function go(v) {
+    target = Math.min(1, Math.max(0, v));
+    if (reduced) set(target);
+    else if (!raf) raf = requestAnimationFrame(tick);
+  }
+  function fromEvent(e) {
+    var r = box.getBoundingClientRect();
+    return (e.clientX - r.left) / r.width;
+  }
+
+  var tween = 0, tweenUntil = 0, held = null;
+  function ease(t) { return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
+  function wipe(to, duration) {
+    cancelAnimationFrame(raf); raf = 0;
+    if (reduced) { set(to); target = to; return; }
+    var from = x, t0 = performance.now(), id = ++tween;
+    tweenUntil = t0 + duration; held = null;
+    (function step(now) {
+      if (id !== tween) return;
+      var t = Math.min(1, (now - t0) / duration);
+      set(from + (to - from) * ease(t));
+      target = x;
+      if (t < 1) requestAnimationFrame(step);
+    })(performance.now());
+  }
+  function follow(e) {
+    // 自动擦除进行中：只有明显移动（>30px）才接管，避免鼠标一抖就打断
+    if (performance.now() < tweenUntil || held) {
+      held = held || { x: e.clientX };
+      if (Math.abs(e.clientX - held.x) < 30) return;
+      held = null; tweenUntil = 0;
+    }
+    tween++; touched = true; go(fromEvent(e));
+  }
+
+  box.addEventListener('pointermove', function (e) {
+    if (e.pointerType === 'mouse') follow(e);
+  });
+  box.addEventListener('pointerdown', function (e) {
+    tween++; tweenUntil = 0; held = null; touched = true;
+    if (box.setPointerCapture) box.setPointerCapture(e.pointerId);
+    go(fromEvent(e));
+  });
+  box.addEventListener('pointermove', function (e) {
+    if (e.pointerType !== 'mouse' && box.hasPointerCapture && box.hasPointerCapture(e.pointerId)) {
+      go(fromEvent(e));
+    }
+  });
+  box.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+      e.preventDefault(); tween++; touched = true;
+      go(target + (e.key === 'ArrowRight' ? 0.1 : -0.1));
+    }
+  });
+  if (replay) {
+    replay.addEventListener('click', function () {
+      touched = true;
+      if (reduced) { set(0); setTimeout(function () { set(1); }, 600); return; }
+      wipe(0, 450);
+      setTimeout(function () { wipe(1, 2200); }, 750);
+    });
+  }
+
+  set(0);
+  if (reduced) { set(1); return; }
+  function start() {
+    setTimeout(function () { if (!touched) wipe(1, 2200); }, 600);
+  }
+  if ('IntersectionObserver' in window) {
+    var seen = new IntersectionObserver(function (es) {
+      if (es[0].isIntersecting) { seen.disconnect(); start(); }
+    }, { threshold: 0.5 });
+    seen.observe(box);
+  } else {
+    start();
+  }
+})();
+</script>
 
 </body>
 </html>

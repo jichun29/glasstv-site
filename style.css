@@ -90,6 +90,65 @@ header h1{
 }
 .hero-shot figcaption{margin-top:14px;font-size:13px;color:var(--dim-2)}
 
+
+/* ---- 装前 / 装后 滑动对比（参考 aerial-tv 官网的做法） ----
+   叠法：自带桌面在底下不动，GlassTV 放在一个从左边滑进来的窗口里，
+   窗口内的图反向位移，于是图本身钉在原地、只被窗口裁切。
+   不用 clip-path：iPhone Safari 会在裁切处漏出一条底图的像素。 */
+.hero-compare{margin-top:56px;scroll-margin-top:80px}
+.tv{position:relative;margin:0 auto;max-width:960px}
+.tv .glow{
+  position:absolute;inset:-8% -6% -4%;z-index:0;pointer-events:none;
+  background:radial-gradient(60% 60% at 50% 45%,rgba(120,160,255,.16),rgba(0,0,0,0) 70%);
+  filter:blur(28px);
+}
+.tv .screen{position:relative;z-index:1;aspect-ratio:16/9;width:100%;
+  border-radius:var(--radius);overflow:hidden;border:1px solid var(--line);
+  box-shadow:0 40px 80px -30px rgba(0,0,0,.9),0 0 0 1px rgba(255,255,255,.03);
+  background:#000;
+}
+.tv .screen img{position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:cover}
+.compare{--x:0%;cursor:ew-resize;touch-action:pan-y;user-select:none;-webkit-user-select:none;outline:none}
+.compare img{-webkit-user-drag:none;pointer-events:none}
+/* 左 = 装前（自带桌面），右 = 装后（GlassTV）。
+   做法：GlassTV 铺在底下，自带桌面放在一个从左边滑入的窗口里；
+   窗口内的图反向位移，于是图钉在原地、只被窗口裁切 —— 分界线右边就露出 GlassTV。 */
+.compare .stock{position:absolute;inset:0 0 -1px;z-index:1;overflow:hidden;transform:translateX(calc(var(--x) - 100%))}
+.compare .stock img{transform:translateX(calc(100% - var(--x)))}
+/* 完全滑到右侧（全屏 GlassTV）时，把装前的图整个撤掉 */
+.compare.done .stock{display:none}
+.compare .divider{
+  transition:opacity .25s ease;position:absolute;z-index:2;top:0;bottom:0;left:var(--x);width:2px;
+  margin-left:-1px;background:rgba(255,255,255,.9);box-shadow:0 0 18px rgba(0,0,0,.5);
+}
+.compare .knob{
+  position:absolute;top:50%;left:50%;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;
+  display:grid;place-items:center;color:#111;background:rgba(255,255,255,.92);
+  box-shadow:0 6px 24px rgba(0,0,0,.45);
+  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+  transition:transform .2s ease;
+}
+/* 手机上视觉钮小一号，但热区撑到 56px：手指按得中，画面又不被挡住 */
+.compare .knob::after{content:"";position:absolute;inset:-8px;border-radius:50%}
+.compare:hover .knob,.compare:focus-visible .knob{transform:scale(1.08)}
+.tv .stand{
+  position:relative;z-index:0;width:16%;height:10px;margin:0 auto;
+  background:linear-gradient(180deg,rgba(255,255,255,.14),rgba(255,255,255,0));
+  border-radius:0 0 8px 8px;
+}
+.compare-legend{display:flex;flex-direction:column;align-items:center;gap:10px;margin-top:20px}
+.compare-hint{font-size:13px;color:var(--dim-2)}
+.replay{
+  display:inline-flex;align-items:center;gap:6px;white-space:nowrap;appearance:none;font:inherit;
+  cursor:pointer;font-size:13px;color:var(--dim);padding:6px 14px;border-radius:999px;
+  border:1px solid var(--line);background:var(--glass);
+}
+.replay:hover{color:var(--fg);border-color:var(--line-strong)}
+@media (max-width:560px){
+  .hero-compare{margin-top:36px}
+  .compare .knob{width:36px;height:36px;margin:-18px 0 0 -18px}
+}
+
 /* ---- sections ---- */
 section{padding:88px 0}
 section.alt{background:var(--bg-alt);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
